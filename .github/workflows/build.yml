@@ -65,6 +65,17 @@ jobs:
           echo "ANDROID_UPLOAD_KEY_ALIAS=${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "ANDROID_UPLOAD_KEY_PASSWORD=${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}" >> "$GITHUB_ENV"
 
+      - name: Create debug keystore (fallback signing when no release keystore)
+        if: env.HAS_RELEASE_SIGNING != 'true'
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Lint production release
         working-directory: android
         run: ./gradlew --no-daemon :app:lintProdRelease

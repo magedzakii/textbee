@@ -41,9 +41,7 @@ android {
             shrinkResources true
             debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (System.getenv("ANDROID_UPLOAD_STORE_FILE")) {
-                signingConfig signingConfigs.release
-            }
+            signingConfig System.getenv("ANDROID_UPLOAD_STORE_FILE") ? signingConfigs.release : signingConfigs.debug
         }
         debug {
             minifyEnabled false
