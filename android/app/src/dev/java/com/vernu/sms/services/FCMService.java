@@ -151,8 +151,12 @@ public class FCMService extends FirebaseMessagingService {
         
         // Call API to update the device with new token
         Log.d(TAG, "Updating FCM token for device: " + deviceId);
-        ApiManager.getApiService()
-            .updateDevice(deviceId, apiKey, updateInput)
+        com.vernu.sms.services.GatewayApiService service = ApiManager.getApiService(this);
+        if (service == null) {
+            Log.e(TAG, "API service not available (base URL not configured), skipping FCM token update");
+            return;
+        }
+        service.updateDevice(deviceId, apiKey, updateInput)
             .enqueue(new Callback<RegisterDeviceResponseDTO>() {
                 @Override
                 public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {

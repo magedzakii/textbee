@@ -59,7 +59,12 @@ public class SMSReceivedWorker extends Worker {
         SMSDTO smsDTO = new Gson().fromJson(smsDtoJson, SMSDTO.class);
         
         try {
-            Call<SMSForwardResponseDTO> call = ApiManager.getApiService().sendReceivedSMS(deviceId, apiKey, smsDTO);
+            com.vernu.sms.services.GatewayApiService service = ApiManager.getApiService(getApplicationContext());
+            if (service == null) {
+                Log.e(TAG, "API service not available (base URL not configured)");
+                return Result.failure();
+            }
+            Call<SMSForwardResponseDTO> call = service.sendReceivedSMS(deviceId, apiKey, smsDTO);
             Response<SMSForwardResponseDTO> response = call.execute();
             
             if (response.isSuccessful()) {

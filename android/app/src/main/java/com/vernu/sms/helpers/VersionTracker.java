@@ -88,8 +88,12 @@ public class VersionTracker {
         updateInput.setAppVersionCode(BuildConfig.VERSION_CODE);
         updateInput.setAppVersionName(BuildConfig.VERSION_NAME);
         
-        Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService()
-                .updateDevice(deviceId, apiKey, updateInput);
+        com.vernu.sms.services.GatewayApiService service = ApiManager.getApiService(context);
+        if (service == null) {
+            Log.d(TAG, "API service not available (base URL not configured), skipping version report");
+            return;
+        }
+        Call<RegisterDeviceResponseDTO> apiCall = service.updateDevice(deviceId, apiKey, updateInput);
         
         apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
             @Override

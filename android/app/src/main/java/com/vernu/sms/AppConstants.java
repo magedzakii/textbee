@@ -25,6 +25,8 @@ public class AppConstants {
     public static final String SHARED_PREFS_SMS_FILTER_CONFIG_KEY = "SMS_FILTER_CONFIG";
     public static final String SHARED_PREFS_DEVICE_NAME_KEY = "DEVICE_NAME";
     public static final String SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY = "SMS_SEND_DELAY_SECONDS";
+    /** User-configurable API base URL (used in privacy flavor; overrides BuildConfig.API_BASE_URL when set). */
+    public static final String SHARED_PREFS_API_BASE_URL_KEY = "API_BASE_URL";
     /** Default delay between SMS sends (seconds). 5s helps avoid carrier/device throttling. */
     public static final int DEFAULT_SMS_SEND_DELAY_SECONDS = 5;
 }
