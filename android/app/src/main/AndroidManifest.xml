@@ -59,7 +59,7 @@
             android:parentActivityName=".activities.MainActivity" />
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
             tools:replace="screenOrientation" />
     </application>
 

@@ -3,7 +3,9 @@ package com.vernu.sms.activities;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -21,7 +23,6 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.snackbar.Snackbar;
@@ -51,7 +52,7 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
 
     private Context mContext;
-    private Switch gatewaySwitch, receiveSMSSwitch;
+    private SwitchCompat gatewaySwitch, receiveSMSSwitch;
     private EditText apiEndpointEditText, apiKeyEditText, deviceIdEditText, deviceNameEditText, smsSendDelayEditText;
     private Button registerDeviceBtn, grantSMSPermissionBtn, scanQRBtn, configureFilterBtn;
     private ImageButton copyDeviceIdImgBtn;
@@ -431,14 +432,7 @@ public class MainActivity extends AppCompatActivity {
         // Set text color using the color state list for proper dark/light mode handling
         setRadioButtonTextColor(radioButton);
         
-        // Set button tint for the radio circle
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                radioButton.setButtonTintList(getResources().getColorStateList(R.color.radio_button_tint, getTheme()));
-            } else {
-                radioButton.setButtonTintList(getResources().getColorStateList(R.color.radio_button_tint));
-            }
-        }
+        radioButton.setButtonTintList(ContextCompat.getColorStateList(this, R.color.radio_button_tint));
         
         // Add proper padding for better touch experience
         radioButton.setPadding(
@@ -453,11 +447,7 @@ public class MainActivity extends AppCompatActivity {
      * Helper method to set radio button text color in a backward-compatible way
      */
     private void setRadioButtonTextColor(RadioButton radioButton) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            radioButton.setTextColor(getResources().getColorStateList(R.color.radio_button_text_color, getTheme()));
-        } else {
-            radioButton.setTextColor(getResources().getColorStateList(R.color.radio_button_text_color));
-        }
+        radioButton.setTextColor(ContextCompat.getColorStateList(this, R.color.radio_button_text_color));
     }
 
     @Override

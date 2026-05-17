@@ -1,5 +1,7 @@
 package com.vernu.sms.models;
 
+import java.util.Locale;
+
 public class SMSFilterRule {
     public enum MatchType {
         EXACT,
@@ -88,8 +90,8 @@ public class SMSFilterRule {
 
         // Apply case sensitivity
         if (!caseSensitive) {
-            patternToMatch = patternToMatch.toLowerCase();
-            textToMatch = textToMatch.toLowerCase();
+            patternToMatch = patternToMatch.toLowerCase(Locale.ROOT);
+            textToMatch = textToMatch.toLowerCase(Locale.ROOT);
         }
 
         switch (matchType) {

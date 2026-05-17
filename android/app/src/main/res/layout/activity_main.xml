@@ -4,7 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_primary"
     tools:context=".activities.MainActivity">
 
     <!-- Sticky Header Section -->
@@ -92,7 +91,8 @@
                     android:layout_gravity="center"
                     android:padding="6dp"
                     android:src="@drawable/ic_baseline_phone_android_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:importantForAccessibility="no"
+                    app:tint="?attr/colorPrimary" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -141,7 +141,8 @@
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:padding="4dp"
                             android:src="@drawable/ic_baseline_content_copy_24"
-                            android:tint="?attr/colorPrimary" />
+                            android:contentDescription="Copy Device ID"
+                            app:tint="?attr/colorPrimary" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -152,7 +153,7 @@
                     android:gravity="center"
                     android:orientation="vertical">
 
-                    <Switch
+                    <androidx.appcompat.widget.SwitchCompat
                         android:id="@+id/gatewaySwitch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -320,7 +321,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:drawableLeft="@drawable/ic_baseline_qr_code_24"
+                            android:drawableStart="@drawable/ic_baseline_qr_code_24"
                             android:drawablePadding="6dp"
                             android:paddingHorizontal="20dp"
                             android:paddingVertical="12dp"
@@ -432,7 +433,7 @@
                                 android:textSize="14sp" />
                         </LinearLayout>
 
-                        <Switch
+                        <androidx.appcompat.widget.SwitchCompat
                             android:id="@+id/receiveSMSSwitch"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -670,7 +671,8 @@
                             android:layout_width="36dp"
                             android:layout_height="36dp"
                             android:src="@drawable/ic_baseline_info_24"
-                            android:tint="?attr/colorPrimary"
+                            android:importantForAccessibility="no"
+                            app:tint="?attr/colorPrimary"
                             android:padding="4dp"
                             android:layout_marginEnd="14dp" />
 

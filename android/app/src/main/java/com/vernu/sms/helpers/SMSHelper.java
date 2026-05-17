@@ -5,7 +5,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.telephony.SmsManager;
-import android.os.Build;
 import android.util.Log;
 
 import com.vernu.sms.AppConstants;
@@ -100,14 +99,7 @@ public class SMSHelper {
         
         try {
             // Get the SmsManager for the specific SIM
-            SmsManager smsManager;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                smsManager = SmsManager.getSmsManagerForSubscriptionId(simSubscriptionId);
-            } else {
-                // Fallback to default SmsManager for older Android versions
-                smsManager = SmsManager.getDefault();
-                Log.w(TAG, "Using default SIM as specific SIM selection not supported on this Android version");
-            }
+            SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(simSubscriptionId);
 
             // Create pending intents for status tracking
             PendingIntent sentIntent = createSentPendingIntent(context, smsId, smsBatchId);

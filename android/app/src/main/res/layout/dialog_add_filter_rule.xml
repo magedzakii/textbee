@@ -96,7 +96,7 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/caseSensitiveSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

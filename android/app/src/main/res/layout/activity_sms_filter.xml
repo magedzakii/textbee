@@ -4,7 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_primary"
     tools:context=".activities.SMSFilterActivity">
 
     <!-- Header Section -->
@@ -29,7 +28,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_revert"
-                android:tint="@color/white"
+                app:tint="@color/white"
                 android:contentDescription="Back"
                 android:padding="8dp" />
 
@@ -132,7 +131,7 @@
                                 android:textSize="14sp" />
                         </LinearLayout>
 
-                        <Switch
+                        <androidx.appcompat.widget.SwitchCompat
                             android:id="@+id/filterEnabledSwitch"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -221,6 +220,7 @@
                         android:layout_gravity="end"
                         android:layout_marginTop="16dp"
                         android:src="@android:drawable/ic_input_add"
+                        android:contentDescription="Add filter rule"
                         app:tint="@color/white"
                         app:backgroundTint="?attr/colorPrimary" />
                 </LinearLayout>

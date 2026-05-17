@@ -12,11 +12,11 @@ import android.widget.ImageButton;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -30,7 +30,7 @@ import java.util.List;
 
 public class SMSFilterActivity extends AppCompatActivity {
     private Context mContext;
-    private Switch filterEnabledSwitch;
+    private SwitchCompat filterEnabledSwitch;
     private RadioGroup filterModeRadioGroup;
     private RadioButton allowListRadio;
     private RadioButton blockListRadio;
@@ -105,7 +105,7 @@ public class SMSFilterActivity extends AppCompatActivity {
         TextInputEditText patternEditText = dialogView.findViewById(R.id.patternEditText);
         Spinner filterTargetSpinner = dialogView.findViewById(R.id.filterTargetSpinner);
         Spinner matchTypeSpinner = dialogView.findViewById(R.id.matchTypeSpinner);
-        Switch caseSensitiveSwitch = dialogView.findViewById(R.id.caseSensitiveSwitch);
+        SwitchCompat caseSensitiveSwitch = dialogView.findViewById(R.id.caseSensitiveSwitch);
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveButton);
 
