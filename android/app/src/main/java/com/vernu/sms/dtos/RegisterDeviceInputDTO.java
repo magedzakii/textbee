@@ -1,33 +1,18 @@
 package com.vernu.sms.dtos;
 
 public class RegisterDeviceInputDTO {
-    private String fcmToken;
     private Boolean enabled;
     private String brand;
     private String manufacturer;
     private String model;
     private String name;
-    private String serial;
     private String buildId;
     private String os;
-    private String osVersion;
     private String appVersionName;
     private int appVersionCode;
     private SimInfoCollectionDTO simInfo;
 
     public RegisterDeviceInputDTO() {
-    }
-
-    public RegisterDeviceInputDTO(String fcmToken) {
-        this.fcmToken = fcmToken;
-    }
-
-    public String getFcmToken() {
-        return fcmToken;
-    }
-
-    public void setFcmToken(String fcmToken) {
-        this.fcmToken = fcmToken;
     }
 
     public Boolean isEnabled() {
@@ -70,14 +55,6 @@ public class RegisterDeviceInputDTO {
         this.name = name;
     }
 
-    public String getSerial() {
-        return serial;
-    }
-
-    public void setSerial(String serial) {
-        this.serial = serial;
-    }
-
     public String getBuildId() {
         return buildId;
     }
@@ -92,14 +69,6 @@ public class RegisterDeviceInputDTO {
 
     public void setOs(String os) {
         this.os = os;
-    }
-
-    public String getOsVersion() {
-        return osVersion;
-    }
-
-    public void setOsVersion(String osVersion) {
-        this.osVersion = osVersion;
     }
 
     public String getAppVersionName() {

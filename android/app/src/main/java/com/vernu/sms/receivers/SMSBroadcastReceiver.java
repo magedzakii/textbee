@@ -12,6 +12,7 @@ import com.vernu.sms.helpers.SharedPreferenceHelper;
 import com.vernu.sms.helpers.SMSFilterHelper;
 import com.vernu.sms.workers.SMSReceivedWorker;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Objects;
@@ -49,14 +50,6 @@ public class SMSBroadcastReceiver extends BroadcastReceiver {
             return;
         }
 
-//        SMS receivedSMS = new SMS();
-//        receivedSMS.setType("RECEIVED");
-//        for (SmsMessage message : messages) {
-//            receivedSMS.setMessage(receivedSMS.getMessage() + message.getMessageBody());
-//            receivedSMS.setSender(message.getOriginatingAddress());
-//            receivedSMS.setReceivedAt(new Date(message.getTimestampMillis()));
-//        }
-
         SMSDTO receivedSMSDTO = new SMSDTO();
 
         for (SmsMessage message : messages) {
@@ -64,15 +57,11 @@ public class SMSBroadcastReceiver extends BroadcastReceiver {
             receivedSMSDTO.setSender(message.getOriginatingAddress());
             receivedSMSDTO.setReceivedAtInMillis(message.getTimestampMillis());
         }
-//        receivedSMSDTO.setSender(receivedSMS.getSender());
-//        receivedSMSDTO.setMessage(receivedSMS.getMessage());
-//        receivedSMSDTO.setReceivedAt(receivedSMS.getReceivedAt());
-
         // Apply SMS filter
         String sender = receivedSMSDTO.getSender();
         String message = receivedSMSDTO.getMessage();
         if (sender != null && !SMSFilterHelper.shouldProcessSMS(sender, message, context)) {
-            Log.d(TAG, "SMS from " + sender + " filtered out by filter rules");
+            Log.d(TAG, "SMS filtered out by filter rules");
             return;
         }
 
@@ -89,7 +78,7 @@ public class SMSBroadcastReceiver extends BroadcastReceiver {
         Long lastProcessedTime = processedFingerprints.get(fingerprint);
         
         if (lastProcessedTime != null && (currentTime - lastProcessedTime) < CACHE_TTL_MS) {
-            Log.d(TAG, "Duplicate SMS detected in cache, skipping: " + fingerprint);
+            Log.d(TAG, "Duplicate SMS detected in cache, skipping");
             return;
         }
 
@@ -99,27 +88,19 @@ public class SMSBroadcastReceiver extends BroadcastReceiver {
         // Clean up old cache entries periodically
         cleanupCache(currentTime);
 
-        SMSReceivedWorker.enqueueWork(context, deviceId, apiKey, receivedSMSDTO);
+        SMSReceivedWorker.enqueueWork(context, deviceId, receivedSMSDTO);
     }
-
-//    private void updateLocalReceivedSMS(SMS localReceivedSMS, Context context) {
-//        Executors.newSingleThreadExecutor().execute(() -> {
-//            AppDatabase appDatabase = AppDatabase.getInstance(context);
-//            appDatabase.localReceivedSMSDao().insertAll(localReceivedSMS);
-//        });
-//    }
 
     /**
      * Generate a unique fingerprint for an SMS message based on sender, message content, and timestamp
      */
     private String generateFingerprint(String sender, String message, long timestamp) {
+        String data = (sender != null ? sender : "") + "|" +
+                     (message != null ? message : "") + "|" +
+                     timestamp;
         try {
-            String data = (sender != null ? sender : "") + "|" + 
-                         (message != null ? message : "") + "|" + 
-                         timestamp;
-            
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hashBytes = md.digest(data.getBytes("UTF-8"));
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = md.digest(data.getBytes(StandardCharsets.UTF_8));
             
             StringBuilder sb = new StringBuilder();
             for (byte b : hashBytes) {
@@ -128,10 +109,7 @@ public class SMSBroadcastReceiver extends BroadcastReceiver {
             return sb.toString();
         } catch (Exception e) {
             Log.e(TAG, "Error generating fingerprint: " + e.getMessage());
-            // Fallback to simple string concatenation if MD5 fails
-            return (sender != null ? sender : "") + "_" + 
-                   (message != null ? message : "") + "_" + 
-                   timestamp;
+            return Long.toHexString(timestamp) + "_" + Integer.toHexString(data.hashCode());
         }
     }
 

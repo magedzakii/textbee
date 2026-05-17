@@ -7,9 +7,6 @@ import android.content.Intent;
 import android.telephony.SmsManager;
 import android.util.Log;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
 import com.vernu.sms.AppConstants;
 import com.vernu.sms.dtos.SMSDTO;
 import com.vernu.sms.helpers.SharedPreferenceHelper;
@@ -19,31 +16,8 @@ import com.vernu.sms.workers.SMSStatusUpdateWorker;
 public class SMSStatusReceiver extends BroadcastReceiver {
     private static final String TAG = "SMSStatusReceiver";
     
-    public static final String SMS_SENT = "SMS_SENT";
-    public static final String SMS_DELIVERED = "SMS_DELIVERED";
-    
-    /**
-     * Resolves a result code to the constant name (e.g. SmsManager.RESULT_ERROR_GENERIC_FAILURE)
-     * via reflection. Returns null if no matching constant is found.
-     */
-    private static String getResultCodeName(int resultCode) {
-        for (Class<?> clazz : new Class<?>[]{ SmsManager.class, Activity.class }) {
-            try {
-                for (Field field : clazz.getDeclaredFields()) {
-                    if (field.getType() != int.class) continue;
-                    if (!Modifier.isStatic(field.getModifiers()) || !Modifier.isFinal(field.getModifiers())) continue;
-                    if (!field.getName().startsWith("RESULT_")) continue;
-                    field.setAccessible(true);
-                    if (field.getInt(null) == resultCode) {
-                        return clazz.getSimpleName() + "." + field.getName();
-                    }
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Reflection failed for " + clazz.getSimpleName() + ": " + e.getMessage());
-            }
-        }
-        return null;
-    }
+    public static final String SMS_SENT = "com.vernu.sms.action.SMS_SENT";
+    public static final String SMS_DELIVERED = "com.vernu.sms.action.SMS_DELIVERED";
     
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -141,8 +115,7 @@ public class SMSStatusReceiver extends BroadcastReceiver {
                 Log.e(TAG, "SMS failed to send - ID: " + smsDTO.getSmsId() + ", Error code: " + resultCode + ", Error: " + errorMessage);
                 break;
             default:
-                String codeName = getResultCodeName(resultCode);
-                errorMessage = codeName != null ? codeName : ("Unknown error (code " + resultCode + ")");
+                errorMessage = "Unknown error (code " + resultCode + ")";
                 smsDTO.setStatus("FAILED");
                 smsDTO.setFailedAtInMillis(timestamp);
                 smsDTO.setErrorCode(String.valueOf(resultCode));
@@ -172,8 +145,7 @@ public class SMSStatusReceiver extends BroadcastReceiver {
                 Log.e(TAG, "SMS delivery failed - ID: " + smsDTO.getSmsId() + ", Error code: " + resultCode + ", Error: " + errorMessage);
                 break;
             default:
-                String deliveryCodeName = getResultCodeName(resultCode);
-                errorMessage = deliveryCodeName != null ? deliveryCodeName : ("Unknown delivery error (code " + resultCode + ")");
+                errorMessage = "Unknown delivery error (code " + resultCode + ")";
                 smsDTO.setStatus("DELIVERY_FAILED");
                 smsDTO.setErrorCode(String.valueOf(resultCode));
                 smsDTO.setErrorMessage(errorMessage);
@@ -193,6 +165,6 @@ public class SMSStatusReceiver extends BroadcastReceiver {
             return;
         }
 
-        SMSStatusUpdateWorker.enqueueWork(context, deviceId, apiKey, smsDTO);
+        SMSStatusUpdateWorker.enqueueWork(context, deviceId, smsDTO);
     }
-} 
+}

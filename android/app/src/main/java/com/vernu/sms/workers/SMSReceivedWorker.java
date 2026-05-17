@@ -15,8 +15,11 @@ import androidx.work.WorkManager;
 
 import com.google.gson.Gson;
 import com.vernu.sms.ApiManager;
+import com.vernu.sms.AppConstants;
 import com.vernu.sms.dtos.SMSDTO;
 import com.vernu.sms.dtos.SMSForwardResponseDTO;
+import com.vernu.sms.helpers.SecurePreferenceCrypto;
+import com.vernu.sms.helpers.SharedPreferenceHelper;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +32,6 @@ public class SMSReceivedWorker extends Worker {
     private static final int MAX_RETRIES = 5;
     
     public static final String KEY_DEVICE_ID = "device_id";
-    public static final String KEY_API_KEY = "api_key";
     public static final String KEY_SMS_DTO = "sms_dto";
     public static final String KEY_RETRY_COUNT = "retry_count";
     
@@ -40,12 +42,23 @@ public class SMSReceivedWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        String deviceId = getInputData().getString(KEY_DEVICE_ID);
-        String apiKey = getInputData().getString(KEY_API_KEY);
+        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+                ""
+        );
+        if (deviceId.isEmpty()) {
+            deviceId = getInputData().getString(KEY_DEVICE_ID);
+        }
+        String apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_API_KEY_KEY,
+                ""
+        );
         String smsDtoJson = getInputData().getString(KEY_SMS_DTO);
         int retryCount = getInputData().getInt(KEY_RETRY_COUNT, 0);
         
-        if (deviceId == null || apiKey == null || smsDtoJson == null) {
+        if (deviceId == null || apiKey.isEmpty() || smsDtoJson == null) {
             Log.e(TAG, "Missing required parameters");
             return Result.failure();
         }
@@ -56,10 +69,17 @@ public class SMSReceivedWorker extends Worker {
             return Result.failure();
         }
         
-        SMSDTO smsDTO = new Gson().fromJson(smsDtoJson, SMSDTO.class);
+        SMSDTO smsDTO;
+        try {
+            String decryptedSmsDtoJson = SecurePreferenceCrypto.decrypt(smsDtoJson);
+            smsDTO = new Gson().fromJson(decryptedSmsDtoJson, SMSDTO.class);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to decrypt queued received SMS payload", e);
+            return Result.failure();
+        }
         
         try {
-            Call<SMSForwardResponseDTO> call = ApiManager.getApiService().sendReceivedSMS(deviceId, apiKey, smsDTO);
+            Call<SMSForwardResponseDTO> call = ApiManager.getApiService(getApplicationContext()).sendReceivedSMS(deviceId, apiKey, smsDTO);
             Response<SMSForwardResponseDTO> response = call.execute();
             
             if (response.isSuccessful()) {
@@ -72,14 +92,23 @@ public class SMSReceivedWorker extends Worker {
         } catch (IOException e) {
             Log.e(TAG, "API call failed: " + e.getMessage());
             return Result.retry();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "API endpoint is not configured: " + e.getMessage());
+            return Result.retry();
         }
     }
     
-    public static void enqueueWork(Context context, String deviceId, String apiKey, SMSDTO smsDTO) {
+    public static void enqueueWork(Context context, String deviceId, SMSDTO smsDTO) {
+        String smsDtoPayload;
+        try {
+            smsDtoPayload = SecurePreferenceCrypto.encrypt(new Gson().toJson(smsDTO));
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to encrypt received SMS work payload", e);
+            return;
+        }
+
         Data inputData = new Data.Builder()
-                .putString(KEY_DEVICE_ID, deviceId)
-                .putString(KEY_API_KEY, apiKey)
-                .putString(KEY_SMS_DTO, new Gson().toJson(smsDTO))
+                .putString(KEY_SMS_DTO, smsDtoPayload)
                 .putInt(KEY_RETRY_COUNT, 0)
                 .build();
         
@@ -110,6 +139,6 @@ public class SMSReceivedWorker extends Worker {
                         workRequest)
                 .enqueue();
         
-        Log.d(TAG, "Work enqueued for received SMS from: " + smsDTO.getSender() + " with fingerprint: " + uniqueWorkName);
+        Log.d(TAG, "Work enqueued for received SMS");
     }
-} 
+}

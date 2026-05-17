@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.telephony.SmsManager;
 import android.os.Build;
-import android.telephony.SubscriptionManager;
 import android.util.Log;
 
 import com.vernu.sms.AppConstants;
@@ -174,7 +173,7 @@ public class SMSHelper {
             return;
         }
 
-        SMSStatusUpdateWorker.enqueueWork(context, deviceId, apiKey, smsDTO);
+        SMSStatusUpdateWorker.enqueueWork(context, deviceId, smsDTO);
     }
     
     private static PendingIntent createSentPendingIntent(Context context, String smsId, String smsBatchId) {
@@ -184,10 +183,7 @@ public class SMSHelper {
         intent.putExtra("sms_id", smsId);
         intent.putExtra("sms_batch_id", smsBatchId);
         
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            flags |= PendingIntent.FLAG_MUTABLE;
-        }
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         
         // Use a unique request code to avoid PendingIntent collisions
         int requestCode = (smsId + "_sent").hashCode();
@@ -201,10 +197,7 @@ public class SMSHelper {
         intent.putExtra("sms_id", smsId);
         intent.putExtra("sms_batch_id", smsBatchId);
         
-        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            flags |= PendingIntent.FLAG_MUTABLE;
-        }
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         
         // Use a unique request code to avoid PendingIntent collisions
         int requestCode = (smsId + "_delivered").hashCode();

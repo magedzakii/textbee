@@ -8,10 +8,6 @@ public class SMSPayload {
     private String smsBatchId;
     private Integer simSubscriptionId;
 
-    // Legacy fields that are no longer used
-    private String[] receivers;
-    private String smsBody;
-
     public SMSPayload() {
     }
 

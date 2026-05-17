@@ -1,24 +1,18 @@
 plugins {
     id 'com.android.application'
-    id 'com.google.firebase.crashlytics'
 }
 
 android {
-    compileSdk 32
+    namespace "com.vernu.sms"
+    compileSdk 35
 
     defaultConfig {
         minSdk 24
-        targetSdk 32
+        targetSdk 35
         versionCode 17
         versionName "2.7.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-//        javaCompileOptions {
-//            annotationProcessorOptions {
-//                arguments["room.schemaLocation"] = "$projectDir/schemas"
-//            }
-//        }
     }
     signingConfigs {
         debug {
@@ -27,14 +21,29 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            def uploadStoreFile = System.getenv("ANDROID_UPLOAD_STORE_FILE")
+            def uploadStorePassword = System.getenv("ANDROID_UPLOAD_STORE_PASSWORD")
+            def uploadKeyAlias = System.getenv("ANDROID_UPLOAD_KEY_ALIAS")
+            def uploadKeyPassword = System.getenv("ANDROID_UPLOAD_KEY_PASSWORD")
+            if (uploadStoreFile && uploadStorePassword && uploadKeyAlias && uploadKeyPassword) {
+                storeFile file(uploadStoreFile)
+                storePassword uploadStorePassword
+                keyAlias uploadKeyAlias
+                keyPassword uploadKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // TODO: Change to release signing config
-            signingConfig signingConfigs.debug
+            if (System.getenv("ANDROID_UPLOAD_STORE_FILE")) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             minifyEnabled false
@@ -50,7 +59,6 @@ android {
             dimension "environment"
             applicationId "com.vernu.sms.dev"
             versionNameSuffix "-dev"
-            buildConfigField "String", "API_BASE_URL", '"https://api.dev.textbee.dev/api/v1/"'
             buildConfigField "String", "ENVIRONMENT", '"development"'
             resValue "string", "app_name", "textbee.dev (Dev)"
         }
@@ -58,7 +66,6 @@ android {
         prod {
             dimension "environment"
             applicationId "com.vernu.sms"
-            buildConfigField "String", "API_BASE_URL", '"https://api.textbee.dev/api/v1/"'
             buildConfigField "String", "ENVIRONMENT", '"production"'
             resValue "string", "app_name", "textbee.dev"
         }
@@ -68,33 +75,30 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
 }
 
 dependencies {
 
-    implementation 'androidx.appcompat:appcompat:1.3.0'
-    implementation 'com.google.android.material:material:1.8.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
-    implementation platform('com.google.firebase:firebase-bom:29.2.1')
-    implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'com.google.firebase:firebase-messaging-directboot'
-    implementation 'com.google.firebase:firebase-crashlytics'
-
-    implementation 'com.google.code.gson:gson:2.9.0'
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.journeyapps:zxing-android-embedded:4.1.0'
+    implementation 'com.google.code.gson:gson:2.13.2'
+    implementation 'com.squareup.retrofit2:retrofit:2.12.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.12.0'
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     
-    implementation 'androidx.work:work-runtime:2.7.1'
-
-//    def room_version = "2.4.2"
-//    implementation "androidx.room:room-runtime:$room_version"
-//    annotationProcessor "androidx.room:room-compiler:$room_version"
+    implementation 'androidx.work:work-runtime:2.11.2'
 }
-
-apply plugin: 'com.google.gms.google-services'

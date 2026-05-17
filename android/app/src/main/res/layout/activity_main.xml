@@ -236,6 +236,26 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
+                        android:hint="API endpoint"
+                        app:boxBackgroundColor="@android:color/transparent"
+                        app:boxStrokeColor="?attr/colorPrimary"
+                        app:hintTextColor="?attr/colorPrimary"
+                        app:helperText="Use your server URL, for example https://example.com/api/v1/"
+                        app:helperTextTextColor="@color/text_secondary">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/apiEndpointEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textUri"
+                            android:textColor="@color/text_primary"
+                            android:textIsSelectable="true" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
                         android:hint="API Key"
                         app:boxBackgroundColor="@android:color/transparent"
                         app:boxStrokeColor="?attr/colorPrimary"
@@ -270,19 +290,6 @@
                             android:textColor="@color/text_primary"
                             android:textIsSelectable="true" />
                     </com.google.android.material.textfield.TextInputLayout>
-
-                    <EditText
-                        android:id="@+id/fcmTokenEditText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:ems="10"
-                        android:enabled="false"
-                        android:gravity="start|top"
-                        android:hint="FCM Token"
-                        android:inputType="textMultiLine"
-                        android:textColor="@color/text_primary"
-                        android:textColorHint="@color/text_secondary"
-                        android:visibility="gone" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -420,7 +427,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Toggle to enable SMS receiving"
+                                android:text="When enabled, inbound SMS sender, content, timestamp, and status are forwarded to your configured HTTPS endpoint."
                                 android:textColor="@color/text_secondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
@@ -447,57 +454,6 @@
                         android:drawablePadding="6dp"
                         android:paddingHorizontal="0dp"
                         style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                    <!-- Sticky Notification Setting -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Sticky Notification"
-                                android:textColor="@color/text_primary"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical">
-                                
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:src="@android:drawable/ic_dialog_info"
-                                    android:tint="?attr/colorPrimary"
-                                    android:layout_marginEnd="6dp" />
-                                
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Prevents app from being killed by the system (optional, but recommended for reliability)"
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="14sp" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <Switch
-                            android:id="@+id/stickyNotificationSwitch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:minHeight="32dp" />
-                    </LinearLayout>
 
                     <View
                         android:layout_width="match_parent"
@@ -633,12 +589,8 @@
                             android:id="@+id/dashboardLinkText"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Go to https://textbee.dev/dashboard"
-                            android:textColor="?attr/colorPrimary"
-                            android:autoLink="web"
-                            android:linksClickable="true"
-                            android:clickable="true"
-                            android:focusable="true" />
+                            android:text="Open your configured dashboard"
+                            android:textColor="?attr/colorPrimary" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -781,17 +733,6 @@
                                     android:textSize="14sp" />
                             </LinearLayout>
                             
-                            <Button
-                                android:id="@+id/checkUpdatesBtn"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Check for Updates"
-                                android:textColor="?attr/colorPrimary"
-                                android:background="@android:color/transparent"
-                                android:textAllCaps="false"
-                                android:paddingHorizontal="0dp"
-                                style="@style/Widget.AppCompat.Button.Borderless" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>

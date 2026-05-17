@@ -4,13 +4,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.BatteryManager;
-import android.os.StatFs;
 import android.os.SystemClock;
 import android.util.Log;
 
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.vernu.sms.ApiManager;
 import com.vernu.sms.AppConstants;
 import com.vernu.sms.BuildConfig;
@@ -19,12 +18,7 @@ import com.vernu.sms.dtos.HeartbeatResponseDTO;
 import com.vernu.sms.dtos.SimInfoCollectionDTO;
 import com.vernu.sms.TextBeeUtils;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Response;
@@ -55,24 +49,6 @@ public class HeartbeatHelper {
         HeartbeatInputDTO heartbeatInput = new HeartbeatInputDTO();
 
         try {
-            // Get FCM token (blocking wait)
-            try {
-                CountDownLatch latch = new CountDownLatch(1);
-                final String[] fcmToken = new String[1];
-                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        fcmToken[0] = task.getResult();
-                    }
-                    latch.countDown();
-                });
-                if (latch.await(5, TimeUnit.SECONDS) && fcmToken[0] != null) {
-                    heartbeatInput.setFcmToken(fcmToken[0]);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to get FCM token: " + e.getMessage());
-                // Continue without FCM token
-            }
-
             // Get battery information
             IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
             Intent batteryStatus = context.registerReceiver(null, ifilter);
@@ -91,14 +67,15 @@ public class HeartbeatHelper {
             // Get network type
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm != null) {
-                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                if (activeNetwork != null && activeNetwork.isConnected()) {
-                    if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                Network activeNetwork = cm.getActiveNetwork();
+                NetworkCapabilities capabilities = activeNetwork != null ? cm.getNetworkCapabilities(activeNetwork) : null;
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                         heartbeatInput.setNetworkType("wifi");
-                    } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                         heartbeatInput.setNetworkType("cellular");
                     } else {
-                        heartbeatInput.setNetworkType("none");
+                        heartbeatInput.setNetworkType("other");
                     }
                 } else {
                     heartbeatInput.setNetworkType("none");
@@ -111,24 +88,6 @@ public class HeartbeatHelper {
 
             // Get device uptime
             heartbeatInput.setDeviceUptimeMillis(SystemClock.uptimeMillis());
-
-            // Get memory information
-            Runtime runtime = Runtime.getRuntime();
-            heartbeatInput.setMemoryFreeBytes(runtime.freeMemory());
-            heartbeatInput.setMemoryTotalBytes(runtime.totalMemory());
-            heartbeatInput.setMemoryMaxBytes(runtime.maxMemory());
-
-            // Get storage information
-            File internalStorage = context.getFilesDir();
-            StatFs statFs = new StatFs(internalStorage.getPath());
-            long availableBytes = statFs.getAvailableBytes();
-            long totalBytes = statFs.getTotalBytes();
-            heartbeatInput.setStorageAvailableBytes(availableBytes);
-            heartbeatInput.setStorageTotalBytes(totalBytes);
-
-            // Get system information
-            heartbeatInput.setTimezone(TimeZone.getDefault().getID());
-            heartbeatInput.setLocale(Locale.getDefault().toString());
 
             // Get receive SMS enabled status
             boolean receiveSMSEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
@@ -153,15 +112,12 @@ public class HeartbeatHelper {
             heartbeatInput.setSimInfo(simInfoCollection);
 
             // Send heartbeat request
-            Call<HeartbeatResponseDTO> call = ApiManager.getApiService().heartbeat(deviceId, apiKey, heartbeatInput);
+            Call<HeartbeatResponseDTO> call = ApiManager.getApiService(context).heartbeat(deviceId, apiKey, heartbeatInput);
             Response<HeartbeatResponseDTO> response = call.execute();
 
             if (response.isSuccessful() && response.body() != null) {
                 HeartbeatResponseDTO responseBody = response.body();
-                if (responseBody.fcmTokenUpdated) {
-                    Log.d(TAG, "FCM token was updated during heartbeat");
-                }
-                
+
                 // Sync device name from heartbeat response (ignore if blank)
                 if (responseBody.name != null && !responseBody.name.trim().isEmpty()) {
                     SharedPreferenceHelper.setSharedPreferenceString(
@@ -169,7 +125,7 @@ public class HeartbeatHelper {
                         AppConstants.SHARED_PREFS_DEVICE_NAME_KEY,
                         responseBody.name
                     );
-                    Log.d(TAG, "Synced device name from heartbeat: " + responseBody.name);
+                    Log.d(TAG, "Synced device name from heartbeat");
                 }
                 
                 Log.d(TAG, "Heartbeat sent successfully");

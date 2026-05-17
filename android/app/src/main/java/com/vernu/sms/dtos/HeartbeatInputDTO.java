@@ -1,33 +1,17 @@
 package com.vernu.sms.dtos;
 
 public class HeartbeatInputDTO {
-    private String fcmToken;
     private Integer batteryPercentage;
     private Boolean isCharging;
     private String networkType;
     private String appVersionName;
     private Integer appVersionCode;
     private Long deviceUptimeMillis;
-    private Long memoryFreeBytes;
-    private Long memoryTotalBytes;
-    private Long memoryMaxBytes;
-    private Long storageAvailableBytes;
-    private Long storageTotalBytes;
-    private String timezone;
-    private String locale;
     private Boolean receiveSMSEnabled;
     private Integer smsSendDelaySeconds;
     private SimInfoCollectionDTO simInfo;
 
     public HeartbeatInputDTO() {
-    }
-
-    public String getFcmToken() {
-        return fcmToken;
-    }
-
-    public void setFcmToken(String fcmToken) {
-        this.fcmToken = fcmToken;
     }
 
     public Integer getBatteryPercentage() {
@@ -76,62 +60,6 @@ public class HeartbeatInputDTO {
 
     public void setDeviceUptimeMillis(Long deviceUptimeMillis) {
         this.deviceUptimeMillis = deviceUptimeMillis;
-    }
-
-    public Long getMemoryFreeBytes() {
-        return memoryFreeBytes;
-    }
-
-    public void setMemoryFreeBytes(Long memoryFreeBytes) {
-        this.memoryFreeBytes = memoryFreeBytes;
-    }
-
-    public Long getMemoryTotalBytes() {
-        return memoryTotalBytes;
-    }
-
-    public void setMemoryTotalBytes(Long memoryTotalBytes) {
-        this.memoryTotalBytes = memoryTotalBytes;
-    }
-
-    public Long getMemoryMaxBytes() {
-        return memoryMaxBytes;
-    }
-
-    public void setMemoryMaxBytes(Long memoryMaxBytes) {
-        this.memoryMaxBytes = memoryMaxBytes;
-    }
-
-    public Long getStorageAvailableBytes() {
-        return storageAvailableBytes;
-    }
-
-    public void setStorageAvailableBytes(Long storageAvailableBytes) {
-        this.storageAvailableBytes = storageAvailableBytes;
-    }
-
-    public Long getStorageTotalBytes() {
-        return storageTotalBytes;
-    }
-
-    public void setStorageTotalBytes(Long storageTotalBytes) {
-        this.storageTotalBytes = storageTotalBytes;
-    }
-
-    public String getTimezone() {
-        return timezone;
-    }
-
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
-
-    public String getLocale() {
-        return locale;
-    }
-
-    public void setLocale(String locale) {
-        this.locale = locale;
     }
 
     public Boolean getReceiveSMSEnabled() {
