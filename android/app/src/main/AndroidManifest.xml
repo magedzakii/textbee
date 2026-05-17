@@ -18,13 +18,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:name=".SMSGatewayApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SMSGateway"
-        android:usesCleartextTraffic="true" >
+        android:usesCleartextTraffic="false" >
 
         <provider
             android:name="androidx.startup.InitializationProvider"
@@ -46,7 +48,8 @@
         </service>
         <receiver
             android:name=".receivers.SMSBroadcastReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
             <intent-filter
                 android:priority="2147483647">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
@@ -55,7 +58,7 @@
 
         <receiver
             android:name=".receivers.SMSStatusReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="SMS_SENT" />
                 <action android:name="SMS_DELIVERED" />

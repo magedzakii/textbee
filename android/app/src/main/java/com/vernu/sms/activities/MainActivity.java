@@ -15,6 +15,7 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -25,12 +26,13 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.snackbar.Snackbar;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.vernu.sms.ApiManager;
 import com.vernu.sms.AppConstants;
 import com.vernu.sms.BuildConfig;
+import com.vernu.sms.CrashlyticsHelper;
+import com.vernu.sms.FCMTokenHelper;
 import com.vernu.sms.TextBeeUtils;
 import com.vernu.sms.R;
 import com.vernu.sms.dtos.RegisterDeviceInputDTO;
@@ -39,7 +41,6 @@ import com.vernu.sms.dtos.SimInfoCollectionDTO;
 import com.vernu.sms.helpers.SharedPreferenceHelper;
 import com.vernu.sms.helpers.VersionTracker;
 import com.vernu.sms.helpers.HeartbeatManager;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.gson.Gson;
 import okhttp3.ResponseBody;
 import java.io.IOException;
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Context mContext;
     private Switch gatewaySwitch, receiveSMSSwitch, stickyNotificationSwitch;
-    private EditText apiKeyEditText, fcmTokenEditText, deviceIdEditText, deviceNameEditText, smsSendDelayEditText;
+    private EditText apiKeyEditText, fcmTokenEditText, deviceIdEditText, deviceNameEditText, smsSendDelayEditText, apiBaseUrlEditText;
     private Button registerDeviceBtn, grantSMSPermissionBtn, scanQRBtn, checkUpdatesBtn, configureFilterBtn;
     private ImageButton copyDeviceIdImgBtn;
     private TextView deviceBrandAndModelTxt, deviceIdTxt, appVersionNameTxt, appVersionCodeTxt;
@@ -92,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         checkUpdatesBtn = findViewById(R.id.checkUpdatesBtn);
         configureFilterBtn = findViewById(R.id.configureFilterBtn);
         smsSendDelayEditText = findViewById(R.id.smsSendDelayEditText);
+        apiBaseUrlEditText = findViewById(R.id.apiBaseUrlEditText);
 
         deviceIdTxt.setText(deviceId);
         deviceIdEditText.setText(deviceId);
@@ -108,12 +110,8 @@ public class MainActivity extends AppCompatActivity {
             VersionTracker.reportVersionToServer(mContext);
         }
         
-        // Initialize Crashlytics with user information
-        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-        crashlytics.setCustomKey("device_id", deviceId != null ? deviceId : "not_registered");
-        crashlytics.setCustomKey("device_model", Build.MODEL);
-        crashlytics.setCustomKey("app_version", versionName);
-        crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE);
+        // Initialize crash reporting with device context
+        CrashlyticsHelper.setCustomKeys(deviceId, Build.MODEL, versionName, BuildConfig.VERSION_CODE);
 
         // Start sticky notification service if enabled
         boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false);
@@ -259,10 +257,39 @@ public class MainActivity extends AppCompatActivity {
             startActivity(browserIntent);
         });
 
+        // Hide "check updates" button in privacy flavor to avoid leaking version info to textbee.dev
+        if (BuildConfig.IS_PRIVACY_FLAVOR) {
+            checkUpdatesBtn.setVisibility(View.GONE);
+        }
+
         configureFilterBtn.setOnClickListener(view -> {
             Intent filterIntent = new Intent(MainActivity.this, SMSFilterActivity.class);
             startActivity(filterIntent);
         });
+
+        // API Base URL setting (privacy flavor only)
+        View apiUrlSection = findViewById(R.id.apiUrlSection);
+        if (BuildConfig.IS_PRIVACY_FLAVOR) {
+            apiUrlSection.setVisibility(View.VISIBLE);
+            String savedUrl = SharedPreferenceHelper.getSharedPreferenceString(
+                    mContext, AppConstants.SHARED_PREFS_API_BASE_URL_KEY, "");
+            apiBaseUrlEditText.setText(savedUrl);
+            apiBaseUrlEditText.setOnEditorActionListener((v, actionId, event) -> {
+                saveApiBaseUrl();
+                return false;
+            });
+            apiBaseUrlEditText.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    // Auto-save after user stops typing (3 s debounce)
+                    smsDelaySaveHandler.removeCallbacksAndMessages("urlSave");
+                    smsDelaySaveHandler.postDelayed(() -> saveApiBaseUrl(), SMS_DELAY_SAVE_DEBOUNCE_MS);
+                }
+            });
+        } else {
+            apiUrlSection.setVisibility(View.GONE);
+        }
 
         // SMS Send Delay setting: save 3 seconds after user stops typing
         int currentDelay = SharedPreferenceHelper.getSharedPreferenceInt(
@@ -287,6 +314,35 @@ public class MainActivity extends AppCompatActivity {
             saveSendDelay();
             return false;
         });
+    }
+
+    /**
+     * Validates and saves the user-entered API base URL for the privacy flavor.
+     * Enforces HTTPS-only and resets the ApiManager when the URL changes.
+     */
+    private void saveApiBaseUrl() {
+        String url = apiBaseUrlEditText.getText().toString().trim();
+        if (url.isEmpty()) {
+            Snackbar.make(apiBaseUrlEditText, "API URL cannot be empty", Snackbar.LENGTH_SHORT).show();
+            return;
+        }
+        if (!url.startsWith("https://")) {
+            Snackbar.make(apiBaseUrlEditText, "URL must start with https://", Snackbar.LENGTH_LONG).show();
+            return;
+        }
+        if (!Patterns.WEB_URL.matcher(url).matches()) {
+            Snackbar.make(apiBaseUrlEditText, "Invalid URL format", Snackbar.LENGTH_LONG).show();
+            return;
+        }
+        // Ensure trailing slash for Retrofit base URL
+        if (!url.endsWith("/")) {
+            url = url + "/";
+            apiBaseUrlEditText.setText(url);
+        }
+        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_BASE_URL_KEY, url);
+        ApiManager.resetApiService();
+        Snackbar.make(apiBaseUrlEditText, "API URL saved", Snackbar.LENGTH_SHORT).show();
+        Log.d(TAG, "API base URL updated: " + url);
     }
 
     private void saveSendDelay() {
@@ -470,25 +526,35 @@ public class MainActivity extends AppCompatActivity {
     private void handleRegisterDevice() {
         String newKey = apiKeyEditText.getText().toString();
         String deviceIdInput = deviceIdEditText.getText().toString();
+
+        // For privacy flavor, verify that the API URL is configured before attempting network calls
+        if (BuildConfig.IS_PRIVACY_FLAVOR) {
+            String savedUrl = SharedPreferenceHelper.getSharedPreferenceString(
+                    mContext, AppConstants.SHARED_PREFS_API_BASE_URL_KEY, "");
+            if (savedUrl.isEmpty()) {
+                Snackbar.make(findViewById(R.id.registerDeviceBtn),
+                        "Please set the API Base URL first", Snackbar.LENGTH_LONG).show();
+                return;
+            }
+        }
         
         registerDeviceBtn.setEnabled(false);
         registerDeviceBtn.setText("Loading...");
         View view = findViewById(R.id.registerDeviceBtn);
 
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
-                    }
-                    String token = task.getResult();
+        FCMTokenHelper.getTokenAsync(new FCMTokenHelper.TokenCallback() {
+            @Override
+            public void onTokenReceived(String token) {
+                // token is empty for privacy flavor - that's expected
+                if (token != null && !token.isEmpty()) {
                     fcmTokenEditText.setText(token);
+                }
 
                     RegisterDeviceInputDTO registerDeviceInput = new RegisterDeviceInputDTO();
                     registerDeviceInput.setEnabled(true);
+                if (token != null && !token.isEmpty()) {
                     registerDeviceInput.setFcmToken(token);
+                }
                     registerDeviceInput.setBrand(Build.BRAND);
                     registerDeviceInput.setManufacturer(Build.MANUFACTURER);
                     registerDeviceInput.setModel(Build.MODEL);
@@ -509,11 +575,19 @@ public class MainActivity extends AppCompatActivity {
                     simInfoCollection.setLastUpdated(System.currentTimeMillis());
                     simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
                     registerDeviceInput.setSimInfo(simInfoCollection);
+
+                com.vernu.sms.services.GatewayApiService service = ApiManager.getApiService(mContext);
+                if (service == null) {
+                    Snackbar.make(view, "API URL not configured", Snackbar.LENGTH_LONG).show();
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText(deviceId != null && !deviceId.isEmpty() ? "Update" : "Register");
+                    return;
+                }
                     
                     // If the user provided a device ID, use it for updating instead of creating new
                     if (!deviceIdInput.isEmpty()) {
                         Log.d(TAG, "Updating device with deviceId: "+ deviceIdInput);
-                        Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().updateDevice(deviceIdInput, newKey, registerDeviceInput);
+                    Call<RegisterDeviceResponseDTO> apiCall = service.updateDevice(deviceIdInput, newKey, registerDeviceInput);
                         apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
                             @Override
                             public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
@@ -548,10 +622,10 @@ public class MainActivity extends AppCompatActivity {
                                     
                                     // Sync device name from server response
                                     if (response.body().data.get("name") != null) {
-                                        String deviceName = response.body().data.get("name").toString();
-                                        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                        deviceNameEditText.setText(deviceName);
-                                        Log.d(TAG, "Synced device name from server: " + deviceName);
+                                        String deviceName2 = response.body().data.get("name").toString();
+                                        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName2);
+                                        deviceNameEditText.setText(deviceName2);
+                                        Log.d(TAG, "Synced device name from server: " + deviceName2);
                                     }
                                     
                                     // Schedule heartbeat if device is enabled
@@ -580,7 +654,7 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-                    Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().registerDevice(newKey, registerDeviceInput);
+                Call<RegisterDeviceResponseDTO> apiCall = service.registerDevice(newKey, registerDeviceInput);
                         apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
                             @Override
                             public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
@@ -614,10 +688,10 @@ public class MainActivity extends AppCompatActivity {
                                 
                                 // Sync device name from server response
                                 if (response.body().data.get("name") != null) {
-                                    String deviceName = response.body().data.get("name").toString();
-                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                    deviceNameEditText.setText(deviceName);
-                                    Log.d(TAG, "Synced device name from server: " + deviceName);
+                                    String deviceName2 = response.body().data.get("name").toString();
+                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName2);
+                                    deviceNameEditText.setText(deviceName2);
+                                    Log.d(TAG, "Synced device name from server: " + deviceName2);
                                 }
                                 
                                 // Schedule heartbeat if device is enabled
@@ -642,32 +716,50 @@ public class MainActivity extends AppCompatActivity {
                             registerDeviceBtn.setText("Update");
                         }
                     });
-                });
+            }
+
+            @Override
+            public void onTokenFailed() {
+                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
+                registerDeviceBtn.setEnabled(true);
+                registerDeviceBtn.setText(deviceId != null && !deviceId.isEmpty() ? "Update" : "Register");
+            }
+        });
     }
 
     private void handleUpdateDevice() {
         String apiKey = apiKeyEditText.getText().toString();
         String deviceIdInput = deviceIdEditText.getText().toString();
         String deviceIdToUse = !deviceIdInput.isEmpty() ? deviceIdInput : deviceId;
+
+        // For privacy flavor, verify that the API URL is configured before attempting network calls
+        if (BuildConfig.IS_PRIVACY_FLAVOR) {
+            String savedUrl = SharedPreferenceHelper.getSharedPreferenceString(
+                    mContext, AppConstants.SHARED_PREFS_API_BASE_URL_KEY, "");
+            if (savedUrl.isEmpty()) {
+                Snackbar.make(findViewById(R.id.registerDeviceBtn),
+                        "Please set the API Base URL first", Snackbar.LENGTH_LONG).show();
+                return;
+            }
+        }
         
         registerDeviceBtn.setEnabled(false);
         registerDeviceBtn.setText("Loading...");
         View view = findViewById(R.id.registerDeviceBtn);
 
-        FirebaseMessaging.getInstance().getToken()
-                .addOnCompleteListener(task -> {
-                    if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
-                    }
-                    String token = task.getResult();
+        FCMTokenHelper.getTokenAsync(new FCMTokenHelper.TokenCallback() {
+            @Override
+            public void onTokenReceived(String token) {
+                // token is empty for privacy flavor - that's expected
+                if (token != null && !token.isEmpty()) {
                     fcmTokenEditText.setText(token);
+                }
 
                     RegisterDeviceInputDTO updateDeviceInput = new RegisterDeviceInputDTO();
                     updateDeviceInput.setEnabled(true);
+                if (token != null && !token.isEmpty()) {
                     updateDeviceInput.setFcmToken(token);
+                }
                     updateDeviceInput.setBrand(Build.BRAND);
                     updateDeviceInput.setManufacturer(Build.MANUFACTURER);
                     updateDeviceInput.setModel(Build.MODEL);
@@ -689,7 +781,14 @@ public class MainActivity extends AppCompatActivity {
                     simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
                     updateDeviceInput.setSimInfo(simInfoCollection);
 
-                    Call<RegisterDeviceResponseDTO> apiCall = ApiManager.getApiService().updateDevice(deviceIdToUse, apiKey, updateDeviceInput);
+                com.vernu.sms.services.GatewayApiService service = ApiManager.getApiService(mContext);
+                if (service == null) {
+                    Snackbar.make(view, "API URL not configured", Snackbar.LENGTH_LONG).show();
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText("Update");
+                    return;
+                }
+                    Call<RegisterDeviceResponseDTO> apiCall = service.updateDevice(deviceIdToUse, apiKey, updateDeviceInput);
                     apiCall.enqueue(new Callback<RegisterDeviceResponseDTO>() {
                         @Override
                         public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
@@ -721,10 +820,10 @@ public class MainActivity extends AppCompatActivity {
                                 
                                 // Sync device name from server response
                                 if (response.body().data.get("name") != null) {
-                                    String deviceName = response.body().data.get("name").toString();
-                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName);
-                                    deviceNameEditText.setText(deviceName);
-                                    Log.d(TAG, "Synced device name from server: " + deviceName);
+                                    String deviceName2 = response.body().data.get("name").toString();
+                                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_NAME_KEY, deviceName2);
+                                    deviceNameEditText.setText(deviceName2);
+                                    Log.d(TAG, "Synced device name from server: " + deviceName2);
                                 }
                                 
                                 // Schedule heartbeat if device is enabled
@@ -751,7 +850,15 @@ public class MainActivity extends AppCompatActivity {
                             registerDeviceBtn.setText("Update");
                         }
                     });
-                });
+            }
+
+            @Override
+            public void onTokenFailed() {
+                Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
+                registerDeviceBtn.setEnabled(true);
+                registerDeviceBtn.setText("Update");
+            }
+        });
     }
 
     private void handleRequestPermissions(View view) {

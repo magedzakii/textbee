@@ -1,6 +1,13 @@
 plugins {
     id 'com.android.application'
-    id 'com.google.firebase.crashlytics'
+}
+
+// Conditionally apply Firebase plugins only for non-privacy builds
+def isPrivacyBuild = gradle.startParameter.taskNames.any { task ->
+    task.toLowerCase().contains('privacy')
+}
+if (!isPrivacyBuild) {
+    apply plugin: 'com.google.firebase.crashlytics'
 }
 
 android {
@@ -13,6 +20,7 @@ android {
         versionName "2.7.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "boolean", "IS_PRIVACY_FLAVOR", "false"
 
 //        javaCompileOptions {
 //            annotationProcessorOptions {
@@ -62,6 +70,15 @@ android {
             buildConfigField "String", "ENVIRONMENT", '"production"'
             resValue "string", "app_name", "textbee.dev"
         }
+
+        privacy {
+            dimension "environment"
+            applicationId "com.vernu.sms.privacy"
+            buildConfigField "String", "API_BASE_URL", '""'
+            buildConfigField "String", "ENVIRONMENT", '"privacy"'
+            buildConfigField "boolean", "IS_PRIVACY_FLAVOR", "true"
+            resValue "string", "app_name", "textbee (Privacy)"
+        }
     }
 
     compileOptions {
@@ -79,11 +96,18 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
-    implementation platform('com.google.firebase:firebase-bom:29.2.1')
-    implementation 'com.google.firebase:firebase-analytics'
-    implementation 'com.google.firebase:firebase-messaging'
-    implementation 'com.google.firebase:firebase-messaging-directboot'
-    implementation 'com.google.firebase:firebase-crashlytics'
+    // Firebase dependencies included only for dev and prod flavors (not privacy)
+    devImplementation platform('com.google.firebase:firebase-bom:29.2.1')
+    devImplementation 'com.google.firebase:firebase-analytics'
+    devImplementation 'com.google.firebase:firebase-messaging'
+    devImplementation 'com.google.firebase:firebase-messaging-directboot'
+    devImplementation 'com.google.firebase:firebase-crashlytics'
+
+    prodImplementation platform('com.google.firebase:firebase-bom:29.2.1')
+    prodImplementation 'com.google.firebase:firebase-analytics'
+    prodImplementation 'com.google.firebase:firebase-messaging'
+    prodImplementation 'com.google.firebase:firebase-messaging-directboot'
+    prodImplementation 'com.google.firebase:firebase-crashlytics'
 
     implementation 'com.google.code.gson:gson:2.9.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
@@ -97,4 +121,6 @@ dependencies {
 //    annotationProcessor "androidx.room:room-compiler:$room_version"
 }
 
-apply plugin: 'com.google.gms.google-services'
+if (!isPrivacyBuild) {
+    apply plugin: 'com.google.gms.google-services'
+}

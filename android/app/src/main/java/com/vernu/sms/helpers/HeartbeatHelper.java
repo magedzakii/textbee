@@ -10,21 +10,20 @@ import android.os.StatFs;
 import android.os.SystemClock;
 import android.util.Log;
 
-import com.google.firebase.messaging.FirebaseMessaging;
+import com.vernu.sms.FCMTokenHelper;
 import com.vernu.sms.ApiManager;
 import com.vernu.sms.AppConstants;
 import com.vernu.sms.BuildConfig;
 import com.vernu.sms.dtos.HeartbeatInputDTO;
 import com.vernu.sms.dtos.HeartbeatResponseDTO;
 import com.vernu.sms.dtos.SimInfoCollectionDTO;
+import com.vernu.sms.services.GatewayApiService;
 import com.vernu.sms.TextBeeUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Response;
@@ -57,16 +56,9 @@ public class HeartbeatHelper {
         try {
             // Get FCM token (blocking wait)
             try {
-                CountDownLatch latch = new CountDownLatch(1);
-                final String[] fcmToken = new String[1];
-                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        fcmToken[0] = task.getResult();
-                    }
-                    latch.countDown();
-                });
-                if (latch.await(5, TimeUnit.SECONDS) && fcmToken[0] != null) {
-                    heartbeatInput.setFcmToken(fcmToken[0]);
+                String fcmToken = FCMTokenHelper.getTokenSync();
+                if (fcmToken != null && !fcmToken.isEmpty()) {
+                    heartbeatInput.setFcmToken(fcmToken);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to get FCM token: " + e.getMessage());
@@ -153,7 +145,12 @@ public class HeartbeatHelper {
             heartbeatInput.setSimInfo(simInfoCollection);
 
             // Send heartbeat request
-            Call<HeartbeatResponseDTO> call = ApiManager.getApiService().heartbeat(deviceId, apiKey, heartbeatInput);
+            GatewayApiService service = ApiManager.getApiService(context);
+            if (service == null) {
+                Log.e(TAG, "API service not available (base URL not configured)");
+                return false;
+            }
+            Call<HeartbeatResponseDTO> call = service.heartbeat(deviceId, apiKey, heartbeatInput);
             Response<HeartbeatResponseDTO> response = call.execute();
 
             if (response.isSuccessful() && response.body() != null) {
